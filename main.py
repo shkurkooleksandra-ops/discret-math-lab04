@@ -28,43 +28,26 @@ for value in reversed(values):
     dual_values.append(1 - value)
 print("\nЗначення двоїстої функції:", dual_values)
 names = ("x1", "x2", "x3")
-terms = []
-for combination, value in zip(combinations, values):
-    if value == 1:
-        literals = []
-        for name, bit in zip(names, combination):
-            if bit == 0:
-                literals.append("\u00ac" + name)
-            else:
-                literals.append(name)
-        term = "(" + " \u2227 ".join(literals) + ")"
-        terms.append(term)
-if len(terms) == 0:
-    ddnf = "0"
-else:
-    ddnf = " \u2228 ".join(terms)
-print("\nДДНФ:", ddnf)
-clauses = []
 
-for combination, value in zip(combinations, values):
-    if value == 0:
-        literals = []
 
-        for name, bit in zip(names, combination):
-            if bit == 0:
-                literals.append(name)
-            else:
-                literals.append("\u00ac" + name)
+def normal_form(values, target):
+    inner = " \u2227 " if target == 1 else " \u2228 "
+    outer = " \u2228 " if target == 1 else " \u2227 "
+    terms = []
 
-        clause = "(" + " \u2228 ".join(literals) + ")"
-        clauses.append(clause)
+    for combination, value in zip(product((0, 1), repeat=3), values):
+        if value == target:
+            literals = [
+                name if bit == target else "\u00ac" + name
+                for name, bit in zip(("x1", "x2", "x3"), combination)
+            ]
+            terms.append("(" + inner.join(literals) + ")")
 
-if len(clauses) == 0:
-    dknf = "1"
-else:
-    dknf = " \u2227 ".join(clauses)
+    return outer.join(terms) if terms else str(1 - target)
 
-print("\nДКНФ:", dknf)
+
+print("\nДДНФ:", normal_form(values, 1))
+print("\nДКНФ:", normal_form(values, 0))
 row = values.copy()
 coefficients = []
 
@@ -98,18 +81,9 @@ else:
 print("\nПоліном Жегалкіна:", polynomial)
 print("\nВластивості функції:")
 
-if values[0] == 0:
-    print("Зберігає константу 0: так")
-else:
-    print("Зберігає константу 0: ні")
-if values[7] == 1:
-    print("Зберігає константу 1: так")
-else:
-    print("Зберігає константу 1: ні")
-if values == dual_values:
-    print("Самодвоїста")
-else:
-    print("Не самодвоїста")
+print("Зберігає константу 0:", "так" if values[0] == 0 else "ні")
+print("Зберігає константу 1:", "так" if values[7] == 1 else "ні")
+print("Самодвоїста:", "так" if values == dual_values else "ні")
 monotone = True
 
 for i in range(8):
@@ -126,16 +100,8 @@ if monotone:
     print("Монотонна")
 else:
     print("Не монотонна")
-linear = True
-
-for index in (3, 5, 6, 7):
-    if coefficients[index] == 1:
-        linear = False
-
-if linear:
-    print("Лінійна")
-else:
-    print("Не лінійна")
+linear = all(coefficients[i] == 0 for i in (3, 5, 6, 7))
+print("Лінійна:", "так" if linear else "ні")
 
 allowed_names = ("x1", "x2", "x3")
 allowed_nodes = (
@@ -146,6 +112,7 @@ allowed_nodes = (
     ast.UnaryOp, ast.Not,
     ast.BinOp, ast.BitXor,
 )
+
 
 def calculate(node, variables):
     if isinstance(node, ast.Constant):
@@ -174,8 +141,10 @@ def calculate(node, variables):
         return left ^ right
 
     raise ValueError("Невідомий елемент формули.")
+
+
 while True:
-    formula = input("Введіть формулу: ")
+    formula = input("Введіть формулу в синтаксисі Python (наприклад (x1 and x2) ^ (not x3)): ")
 
     try:
         expression = ast.parse(formula, mode="eval")
@@ -200,20 +169,26 @@ while True:
     except ValueError as error:
         print(error)
 
-combinations = list(product((0, 1), repeat=3))
+
+def analyze(values):
+    combinations = list(product((0, 1), repeat=3))
+
+    table = [
+        "x1 x2 x3 | f",
+        "---------+--"
+    ]
+    for combination, value in zip(combinations, values):
+        x1, x2, x3 = combination
+        table.append(f"{x1}  {x2}  {x3}  | {value}")
+
+    print("\n".join(table))
+
+
 values = []
 
-table = [
-    "x1 x2 x3 | f",
-    "---------+--"
-]
-
-for x1, x2, x3 in combinations:
+for x1, x2, x3 in product((0, 1), repeat=3):
     variables = {"x1": x1, "x2": x2, "x3": x3}
-
     value = calculate(expression.body, variables)
     values.append(value)
 
-    table.append(f"{x1}  {x2}  {x3}  | {value}")
-
-print("\n".join(table))
+analyze(values)
